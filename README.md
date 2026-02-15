@@ -1,6 +1,7 @@
 # Zhuyin Typing Tutor
+> **Note**: This project was produced entirely with **Antigravity + Gemini 3 Pro**.
 
-A web-based typing tutor for learning the Zhuyin (Bopomofo) keyboard layout.
+A modern, interactive typing tutor for learning the Zhuyin (Bopomofo) input method.ard layout.
 
 ## Features
 - **Visual Keyboard**: Highlights the correct key for the current character.
