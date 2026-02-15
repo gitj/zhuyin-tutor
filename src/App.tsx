@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTypingEngine } from './hooks/useTypingEngine';
 import { useAudioFeedback } from './hooks/useAudioFeedback';
 import { TypingArea } from './components/TypingArea';
 import { VirtualKeyboard } from './components/VirtualKeyboard';
 import { Stats } from './components/Stats';
 import { ZHUYIN_KEYMAP } from './data/keymap';
-// import lessons from './data/lessons.json'; // We will load this dynamically or import it
+import { generateWeightedLesson } from './utils/LessonGenerator';
 
 // Fallback lesson if json not loaded yet
 const DEFAULT_LESSON = {
@@ -17,72 +17,112 @@ const DEFAULT_LESSON = {
 import lessonsData from './data/lessons.json';
 
 function App() {
-  const [currentLesson, setCurrentLesson] = useState(lessonsData[0] || DEFAULT_LESSON);
+  // Use random lesson as initial state
+  const [currentLesson, setCurrentLesson] = useState(() => {
+    const content = generateWeightedLesson(24);
+    return {
+      id: `random-${Date.now()}`,
+      name: 'Random High-Freq',
+      content: content
+    };
+  });
+
+  // Method to generate a new random lesson
+  const handleNewRandomLesson = useCallback(() => {
+    // Reduced to 24 syllables for better fit
+    const newContent = generateWeightedLesson(24);
+    setCurrentLesson({
+      id: `random-${Date.now()}`,
+      name: 'Random High-Freq',
+      content: newContent
+    });
+  }, []);
 
   const {
-    text,
-    cursorIndex,
+    syllables,
+    currentSyllableIndex,
+    currentCharIndex,
     errors,
     wpm,
     accuracy,
     completed,
     handleKeyPress,
-    restart
-  } = useTypingEngine(currentLesson.content, currentLesson.id);
+    restart,
+    lastEvent
+  } = useTypingEngine(currentLesson.content);
 
-  const { playSound } = useAudioFeedback();
+  const { playKeySound, playSyllableSound } = useAudioFeedback();
+
+  // Handle Audio Logic based on Engine State
+  useEffect(() => {
+    if (completed) return;
+
+    if (lastEvent === 'char-correct') {
+      // Logic to play key sound ONLY if we didn't just complete a syllable
+      // But wait, lastEvent is 'char-correct' only if it WAS NOT 'syllable-complete'.
+      // The engine sets event = 'syllable-complete' PRIORITY over 'char-correct' if both happen.
+      // So if lastEvent is 'char-correct', it means we are MID-syllable.
+
+      const currentSyllable = syllables[currentSyllableIndex];
+      // currentCharIndex is already advanced. Target char was at index-1.
+      const charIndexTyped = currentCharIndex - 1;
+
+      if (charIndexTyped >= 0 && currentSyllable) {
+        const charTyped = currentSyllable[charIndexTyped];
+        // Reverse lookup char -> key to find filename
+        const key = Object.keys(ZHUYIN_KEYMAP).find(k => ZHUYIN_KEYMAP[k] === charTyped);
+        if (key) playKeySound(key);
+      }
+    } else if (lastEvent === 'syllable-complete') {
+      // Syllable just finished. Play the full syllable sound (which is now an MP3).
+      // We do NOT play the key sound here, effectively silencing the final keystroke's individual sound.
+
+      const completedSyllable = syllables[currentSyllableIndex - 1];
+      const nextSyllable = syllables[currentSyllableIndex];
+
+      if (completedSyllable) playSyllableSound(completedSyllable);
+
+      // Queue the next one if available
+      if (nextSyllable && !completed) {
+        setTimeout(() => {
+          playSyllableSound(nextSyllable);
+        }, 800);
+      }
+    } else if (lastEvent === 'none' && currentSyllableIndex === 0 && currentCharIndex === 0) {
+      // Initial load
+      const firstSyllable = syllables[0];
+      if (firstSyllable) playSyllableSound(firstSyllable);
+    }
+  }, [lastEvent, currentSyllableIndex, currentCharIndex, completed, playSyllableSound, playKeySound, syllables]);
+
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore modifier keys
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
-      // Prevent default for some keys if needed, but usually better to let browser handle unless it conflicts
+      // Prevent Firefox Quick Search on '/'
+      if (e.key === '/') {
+        e.preventDefault();
+      }
+
+      if (completed) {
+        // Generate new lesson on any key press if completed
+        handleNewRandomLesson();
+        return;
+      }
+
       if (e.key.length === 1) {
-        // e.preventDefault(); // Maybe not needed
-        const isLessonComplete = handleKeyPress(e.key);
-
-        // Play sound if correct? Or play sound of the target char?
-        // Original request: "when I press a key it plays the corresponding approximate sound"
-        // So we play the sound of the KEY PRESSED or the TARGET? 
-        // "when I press a key it plays the corresponding approximate sound" -> Key pressed.
-        // But for a tutor, usually we want to reinforce the Correct sound.
-        // Let's play the sound of the key pressed.
-
-        // Map key to Zhuyin
-        // We need the zhuyin char for the key pressed
-        // We can look it up in ZHUYIN_KEYMAP inside useAudioFeedback or here.
-        // Let's import ZHUYIN_KEYMAP here to look it up for audio.
-        // Actually useAudioFeedback could take the zhuyin char.
-
-        // To be safe, let's get the char from the keymap
-        // I need to export ZHUYIN_KEYMAP from hooks or data
+        handleKeyPress(e.key);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyPress]);
+  }, [handleKeyPress, completed, handleNewRandomLesson]);
 
-  // Effect to play sound on keypress is tricky inside the event handler if we need React state.
-  // Better: The `handleKeyPress` returns stats. 
-  // Maybe we just modify `useAudioFeedback` to expose a play function we call in the event handler.
-
-  // Re-implementing specific key listener for audio to separate concerns
-  useEffect(() => {
-    const handleAudio = (e: KeyboardEvent) => {
-      if (e.key.length === 1 && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        // We need to map key to zhuyin to play it.
-        const char = ZHUYIN_KEYMAP[e.key];
-        if (char) {
-          playSound(e.key);
-        }
-      }
-    };
-    window.addEventListener('keydown', handleAudio);
-    return () => window.removeEventListener('keydown', handleAudio);
-  }, [playSound]);
-
+  const currentSyllable = syllables[currentSyllableIndex];
+  const nextChar = !completed && currentSyllable ? currentSyllable[currentCharIndex] : null;
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center py-10 font-sans selection:bg-blue-500 selection:text-white">
@@ -94,41 +134,62 @@ function App() {
       </header>
 
       <div className="w-full max-w-5xl px-4 flex flex-col items-center">
-        {/* Lesson Selector */}
-        <div className="mb-6 w-full flex justify-between items-center bg-gray-800 p-4 rounded-lg">
-          <div className="text-lg font-semibold text-gray-300 mr-4">Current Lesson:</div>
-          <select
-            className="bg-gray-700 text-white border-none rounded px-4 py-2 flex-grow focus:ring-2 focus:ring-blue-500 outline-none"
-            value={currentLesson.id}
-            onChange={(e) => {
-              const selected = lessonsData.find(l => l.id === e.target.value);
-              if (selected) setCurrentLesson(selected);
-            }}
-          >
-            {lessonsData.map(l => (
-              <option key={l.id} value={l.id}>{l.name}</option>
-            ))}
-          </select>
+        {/* Control Bar: Lesson Selector + Random Button + Stats */}
+        <div className="mb-6 w-full bg-gray-800 p-4 rounded-lg flex flex-col xl:flex-row gap-4 items-center justify-between">
+
+          {/* Left: Lesson Controls */}
+          <div className="flex flex-col sm:flex-row gap-4 w-full xl:w-auto items-center">
+            <div className="flex items-center w-full sm:w-auto">
+              <div className="text-gray-400 mr-2 whitespace-nowrap">Lesson:</div>
+              <select
+                className="bg-gray-700 text-white border-none rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-64"
+                value={currentLesson.id.startsWith('random-') ? '' : currentLesson.id}
+                onChange={(e) => {
+                  const selected = lessonsData.find(l => l.id === e.target.value);
+                  if (selected) setCurrentLesson(selected);
+                }}
+              >
+                <option value="" disabled>Custom / Random</option>
+                {lessonsData.map(l => (
+                  <option key={l.id} value={l.id}>{l.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              onClick={handleNewRandomLesson}
+              className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold rounded shadow transition-all whitespace-nowrap w-full sm:w-auto"
+            >
+              🎲 New Random
+            </button>
+          </div>
+
+          {/* Right: Stats (Inline) */}
+          <div className="w-full xl:w-auto border-t xl:border-t-0 xl:border-l border-gray-700 pt-4 xl:pt-0 xl:pl-4">
+            <Stats wpm={wpm} accuracy={accuracy} completed={completed} />
+          </div>
         </div>
 
-        <Stats wpm={wpm} accuracy={accuracy} completed={completed} />
-
         <TypingArea
-          text={text}
-          cursorIndex={cursorIndex}
+          syllables={syllables}
+          currentSyllableIndex={currentSyllableIndex}
+          currentCharIndex={currentCharIndex}
           errors={errors}
           completed={completed}
           onRestart={restart}
         />
 
-        <VirtualKeyboard nextChar={!completed ? text[cursorIndex] : null} />
+        <VirtualKeyboard nextChar={nextChar} />
 
         <div className="mt-8 text-sm text-gray-500">
-          Press the key corresponding to the highlighted Zhuyin character.
+          {completed
+            ? <span className="text-green-400 font-bold animate-pulse">Press any key to start next lesson</span>
+            : "Type the highlighted character. Audio plays for full syllables and keys."}
         </div>
       </div>
     </div>
   );
 }
+
 
 export default App;

@@ -1,40 +1,22 @@
 import json
 import random
 import os
+from valid_syllables import VALID_SYLLABLES_NO_TONE
 
-# Standard Zhuyin Layout
-KEYMAP = {
-    '1': 'ㄅ', 'q': 'ㄆ', 'a': 'ㄇ', 'z': 'ㄈ',
-    '2': 'ㄉ', 'w': 'ㄊ', 's': 'ㄋ', 'x': 'ㄌ',
-    '3': 'ˇ', 'e': 'ㄍ', 'd': 'ㄎ', 'c': 'ㄏ',
-    '4': 'ˋ', 'r': 'ㄐ', 'f': 'ㄑ', 'v': 'ㄒ',
-    '5': 'ㄓ', 't': 'ㄔ', 'g': 'ㄕ', 'b': 'ㄖ',
-    '6': 'ˊ', 'y': 'ㄗ', 'h': 'ㄘ', 'n': 'ㄙ',
-    '7': '˙', 'u': 'ㄧ', 'j': 'ㄨ', 'm': 'ㄩ',
-    '8': 'ㄚ', 'i': 'ㄛ', 'k': 'ㄜ', ',': 'ㄝ',
-    '9': 'ㄞ', 'o': 'ㄟ', 'l': 'ㄠ', '.': 'ㄡ',
-    '0': 'ㄢ', 'p': 'ㄣ', ';': 'ㄤ', '/': 'ㄥ',
-    '-': 'ㄦ'
-}
-
-# Reverse mapping for easy lookup
-CHAR_TO_KEY = {v: k for k, v in KEYMAP.items()}
-
-def generate_random_lesson(length=50):
-    chars = list(KEYMAP.values())
-    return "".join(random.choices(chars, k=length))
+def generate_random_lesson(count=20):
+    return random.choices(VALID_SYLLABLES_NO_TONE, k=count)
 
 def generate_lessons():
     lessons = [
         {
-            "id": "random-50",
-            "name": "Random 50 Characters",
-            "content": generate_random_lesson(50)
+            "id": "syllables-20",
+            "name": "Random 20 Syllables",
+            "content": generate_random_lesson(20) # Now returning list of strings
         },
         {
-            "id": "row-1",
-            "name": "Row 1 (BPMF D...)",
-            "content": "ㄅㄆㄇㄈㄉㄊㄋㄌ" * 5
+            "id": "syllables-50",
+            "name": "Random 50 Syllables",
+            "content": generate_random_lesson(50)
         }
     ]
     

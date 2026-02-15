@@ -1,16 +1,18 @@
 import React, { useRef, useEffect } from 'react';
 
 interface TypingAreaProps {
-    text: string;
-    cursorIndex: number;
-    errors: number[];
+    syllables: string[];
+    currentSyllableIndex: number;
+    currentCharIndex: number;
+    errors: { syllableIndex: number; charIndex: number }[];
     completed: boolean;
     onRestart: () => void;
 }
 
 export const TypingArea: React.FC<TypingAreaProps> = ({
-    text,
-    cursorIndex,
+    syllables,
+    currentSyllableIndex,
+    currentCharIndex,
     errors,
     completed,
     onRestart
@@ -27,7 +29,7 @@ export const TypingArea: React.FC<TypingAreaProps> = ({
                 inline: 'center'
             });
         }
-    }, [cursorIndex]);
+    }, [currentSyllableIndex, currentCharIndex]);
 
     return (
         <div className="max-w-4xl mx-auto w-full mb-8">
@@ -51,35 +53,51 @@ export const TypingArea: React.FC<TypingAreaProps> = ({
                     </div>
                 )}
 
-                {/* Text Display */}
-                <div className="flex flex-wrap">
-                    {text.split('').map((char, index) => {
-                        let statusColor = 'text-gray-500'; // Upcoming
-                        let bgColor = 'bg-transparent';
-                        const isCurrent = index === cursorIndex;
-                        const isError = errors.includes(index);
-                        const isPast = index < cursorIndex;
+                {/* Syllable Display */}
+                <div className="flex flex-wrap gap-4">
+                    {syllables.map((syllable, sIndex) => {
+                        const isCurrentSyllable = sIndex === currentSyllableIndex;
+                        const isPastSyllable = sIndex < currentSyllableIndex;
 
-                        if (isPast) {
-                            statusColor = isError ? 'text-red-400' : 'text-white';
-                        } else if (isCurrent) {
-                            statusColor = 'text-white';
-                            bgColor = 'bg-blue-500/30'; // Cursor Block Chars
-                        }
-
-                        // Special highlighting for the current character
                         return (
-                            <span
-                                key={index}
-                                ref={isCurrent ? cursorRef : null}
+                            <div
+                                key={sIndex}
                                 className={`
-                                    relative px-0.5 rounded
-                                    ${statusColor} ${bgColor}
-                                    ${isCurrent ? 'animate-pulse ring-2 ring-blue-500' : ''}
+                                    flex px-2 rounded-lg transition-colors duration-200
+                                    ${isCurrentSyllable ? 'bg-blue-900/40 ring-2 ring-blue-500/50' : ''}
+                                    ${isPastSyllable ? 'opacity-50' : ''}
                                 `}
                             >
-                                {char}
-                            </span>
+                                {syllable.split('').map((char, cIndex) => {
+                                    let statusColor = 'text-gray-500';
+                                    let bgColor = 'bg-transparent';
+
+                                    const isCurrentChar = isCurrentSyllable && cIndex === currentCharIndex;
+                                    const isPastChar = isCurrentSyllable && cIndex < currentCharIndex;
+                                    const isError = errors.some(e => e.syllableIndex === sIndex && e.charIndex === cIndex);
+
+                                    if (isPastSyllable || isPastChar) {
+                                        statusColor = isError ? 'text-red-400' : 'text-white';
+                                    } else if (isCurrentChar) {
+                                        statusColor = 'text-white';
+                                        bgColor = 'bg-blue-500';
+                                    }
+
+                                    return (
+                                        <span
+                                            key={cIndex}
+                                            ref={isCurrentChar ? cursorRef : null}
+                                            className={`
+                                                relative px-0.5 rounded
+                                                ${statusColor} ${bgColor}
+                                                ${isCurrentChar ? 'animate-pulse' : ''}
+                                            `}
+                                        >
+                                            {char}
+                                        </span>
+                                    );
+                                })}
+                            </div>
                         );
                     })}
                 </div>

@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Audio
+public/audio/syllables/*.mp3
+!public/audio/syllables_ogg/*.ogg
