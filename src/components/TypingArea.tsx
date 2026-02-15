@@ -7,6 +7,7 @@ interface TypingAreaProps {
     errors: { syllableIndex: number; charIndex: number }[];
     completed: boolean;
     onRestart: () => void;
+    isHardMode: boolean; // New Prop
 }
 
 export const TypingArea: React.FC<TypingAreaProps> = ({
@@ -15,7 +16,8 @@ export const TypingArea: React.FC<TypingAreaProps> = ({
     currentCharIndex,
     errors,
     completed,
-    onRestart
+    onRestart,
+    isHardMode
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const cursorRef = useRef<HTMLSpanElement>(null);
@@ -71,10 +73,35 @@ export const TypingArea: React.FC<TypingAreaProps> = ({
                                 {syllable.split('').map((char, cIndex) => {
                                     let statusColor = 'text-gray-500';
                                     let bgColor = 'bg-transparent';
+                                    let content = char; // Default content
 
                                     const isCurrentChar = isCurrentSyllable && cIndex === currentCharIndex;
                                     const isPastChar = isCurrentSyllable && cIndex < currentCharIndex;
                                     const isError = errors.some(e => e.syllableIndex === sIndex && e.charIndex === cIndex);
+
+                                    // HARD MODE LOGIC
+                                    // If Hard Mode is ON:
+                                    // 1. Past Syllables: Revealed (As normal)
+                                    // 2. Current Syllable:
+                                    //    - Past Chars (Already typed): Revealed
+                                    //    - Current & Future Chars: Hidden (show '?' or '_')
+                                    // 3. Future Syllables: Hidden (show '?')
+
+                                    if (isHardMode) {
+                                        if (isPastSyllable) {
+                                            // Show normally
+                                        } else if (isCurrentSyllable) {
+                                            if (isPastChar) {
+                                                // Show normally (Revealed)
+                                            } else {
+                                                // Hidden
+                                                content = '•';
+                                            }
+                                        } else {
+                                            // Future syllable
+                                            content = '•';
+                                        }
+                                    }
 
                                     if (isPastSyllable || isPastChar) {
                                         statusColor = isError ? 'text-red-400' : 'text-white';
@@ -93,7 +120,7 @@ export const TypingArea: React.FC<TypingAreaProps> = ({
                                                 ${isCurrentChar ? 'animate-pulse' : ''}
                                             `}
                                         >
-                                            {char}
+                                            {content}
                                         </span>
                                     );
                                 })}

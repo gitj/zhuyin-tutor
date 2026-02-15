@@ -27,6 +27,9 @@ function App() {
     };
   });
 
+  // Hard Mode State
+  const [isHardMode, setIsHardMode] = useState(false);
+
   // Method to generate a new random lesson
   const handleNewRandomLesson = useCallback(() => {
     // Reduced to 24 syllables for better fit
@@ -106,6 +109,16 @@ function App() {
         e.preventDefault();
       }
 
+      // Replay Audio on Space
+      if (e.code === 'Space') {
+        e.preventDefault();
+        const currentSyllable = syllables[currentSyllableIndex];
+        if (!completed && currentSyllable) {
+          playSyllableSound(currentSyllable);
+        }
+        return;
+      }
+
       if (completed) {
         // Generate new lesson on any key press if completed
         handleNewRandomLesson();
@@ -119,10 +132,13 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyPress, completed, handleNewRandomLesson]);
+  }, [handleKeyPress, completed, handleNewRandomLesson, syllables, currentSyllableIndex, playSyllableSound]);
 
   const currentSyllable = syllables[currentSyllableIndex];
-  const nextChar = !completed && currentSyllable ? currentSyllable[currentCharIndex] : null;
+  // In Hard Mode, we do NOT show the next char hint on the keyboard
+  const nextChar = !completed && currentSyllable && !isHardMode
+    ? currentSyllable[currentCharIndex]
+    : null;
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center py-10 font-sans selection:bg-blue-500 selection:text-white">
@@ -134,27 +150,24 @@ function App() {
       </header>
 
       <div className="w-full max-w-5xl px-4 flex flex-col items-center">
-        {/* Control Bar: Lesson Selector + Random Button + Stats */}
+        {/* Control Bar: Mode Toggle + Random Button + Stats */}
         <div className="mb-6 w-full bg-gray-800 p-4 rounded-lg flex flex-col xl:flex-row gap-4 items-center justify-between">
 
-          {/* Left: Lesson Controls */}
+          {/* Left: Controls */}
           <div className="flex flex-col sm:flex-row gap-4 w-full xl:w-auto items-center">
-            <div className="flex items-center w-full sm:w-auto">
-              <div className="text-gray-400 mr-2 whitespace-nowrap">Lesson:</div>
-              <select
-                className="bg-gray-700 text-white border-none rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-64"
-                value={currentLesson.id.startsWith('random-') ? '' : currentLesson.id}
-                onChange={(e) => {
-                  const selected = lessonsData.find(l => l.id === e.target.value);
-                  if (selected) setCurrentLesson(selected);
-                }}
-              >
-                <option value="" disabled>Custom / Random</option>
-                {lessonsData.map(l => (
-                  <option key={l.id} value={l.id}>{l.name}</option>
-                ))}
-              </select>
-            </div>
+
+            {/* Mode Toggle */}
+            <button
+              onClick={() => setIsHardMode(!isHardMode)}
+              className={`
+                px-4 py-2 rounded font-bold shadow transition-all whitespace-nowrap w-full sm:w-auto flex items-center justify-center gap-2
+                ${isHardMode
+                  ? 'bg-red-600 hover:bg-red-700 text-white'
+                  : 'bg-green-600 hover:bg-green-700 text-white'}
+              `}
+            >
+              {isHardMode ? '🔥 Hard Mode' : '🌱 Easy Mode'}
+            </button>
 
             <button
               onClick={handleNewRandomLesson}
@@ -177,6 +190,7 @@ function App() {
           errors={errors}
           completed={completed}
           onRestart={restart}
+          isHardMode={isHardMode}
         />
 
         <VirtualKeyboard nextChar={nextChar} />
@@ -184,7 +198,9 @@ function App() {
         <div className="mt-8 text-sm text-gray-500">
           {completed
             ? <span className="text-green-400 font-bold animate-pulse">Press any key to start next lesson</span>
-            : "Type the highlighted character. Audio plays for full syllables and keys."}
+            : isHardMode
+              ? "Hard Mode: Listen and type. Press 'Space' to replay audio."
+              : "Type the highlighted character. Audio plays for full syllables and keys."}
         </div>
       </div>
     </div>
