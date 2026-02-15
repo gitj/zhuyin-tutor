@@ -38,9 +38,11 @@ export const TypingArea: React.FC<TypingAreaProps> = ({
             <div
                 ref={containerRef}
                 className="
-                    relative bg-gray-800 rounded-xl p-8 min-h-[160px] 
-                    font-mono text-3xl leading-relaxed tracking-wider break-words
-                    shadow-inner overflow-hidden border border-gray-700
+                    relative bg-gray-800 rounded-xl p-8 
+                    min-h-[160px] flex items-center
+                    font-mono text-3xl leading-relaxed tracking-wider 
+                    shadow-inner border border-gray-700
+                    overflow-x-auto overflow-y-hidden
                 "
             >
                 {/* Overlay for Completion */}
@@ -48,7 +50,7 @@ export const TypingArea: React.FC<TypingAreaProps> = ({
                     <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-10 rounded-xl">
                         <button
                             onClick={onRestart}
-                            className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-full shadow-lg transition-transform transform hover:scale-105"
+                            className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-full shadow-lg transition-transform transform hover:scale-105 whitespace-nowrap"
                         >
                             Restart Lesson
                         </button>
@@ -56,7 +58,7 @@ export const TypingArea: React.FC<TypingAreaProps> = ({
                 )}
 
                 {/* Syllable Display */}
-                <div className="flex flex-wrap gap-4">
+                <div className="flex flex-nowrap gap-4 items-center h-full px-4">
                     {syllables.map((syllable, sIndex) => {
                         const isCurrentSyllable = sIndex === currentSyllableIndex;
                         const isPastSyllable = sIndex < currentSyllableIndex;
