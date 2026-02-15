@@ -193,7 +193,10 @@ function App() {
           isHardMode={isHardMode}
         />
 
-        <VirtualKeyboard nextChar={nextChar} />
+        <VirtualKeyboard
+          nextChar={nextChar}
+          onKeyPress={handleKeyPress}
+        />
 
         <div className="mt-8 text-sm text-gray-500">
           {completed

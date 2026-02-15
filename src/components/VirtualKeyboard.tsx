@@ -3,14 +3,15 @@ import { ZHUYIN_KEYMAP, KEYBOARD_ROWS, REVERSE_KEYMAP } from '../data/keymap';
 
 interface VirtualKeyboardProps {
     nextChar: string | null;
+    onKeyPress: (key: string) => void;
 }
 
-export const VirtualKeyboard: React.FC<VirtualKeyboardProps> = ({ nextChar }) => {
+export const VirtualKeyboard: React.FC<VirtualKeyboardProps> = ({ nextChar, onKeyPress }) => {
     // Determine which key to highlight
     const highlightKey = nextChar ? REVERSE_KEYMAP[nextChar] : null;
 
     return (
-        <div className="flex flex-col gap-2 p-4 bg-gray-800 rounded-xl shadow-lg w-full max-w-4xl mx-auto">
+        <div className="flex flex-col gap-2 p-4 bg-gray-800 rounded-xl shadow-lg w-full max-w-4xl mx-auto select-none">
             {KEYBOARD_ROWS.map((row, rowIndex) => (
                 <div key={rowIndex} className="flex justify-center gap-2">
                     {row.map((key) => {
@@ -20,8 +21,10 @@ export const VirtualKeyboard: React.FC<VirtualKeyboardProps> = ({ nextChar }) =>
                         return (
                             <div
                                 key={key}
+                                onClick={() => onKeyPress(key)}
                                 className={`
                                     relative flex flex-col items-center justify-center p-2 rounded-lg w-12 h-12 sm:w-14 sm:h-14 transition-all duration-200
+                                    cursor-pointer active:scale-95 active:bg-blue-600
                                     ${isHighlighted
                                         ? 'bg-blue-500 text-white transform scale-105 shadow-md ring-2 ring-blue-300'
                                         : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}
